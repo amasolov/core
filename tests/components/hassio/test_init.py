@@ -169,7 +169,7 @@ async def test_setup_api_ping(
         await hass.async_block_till_done()
 
     assert result
-    assert len(supervisor_client.mock_calls) == 16
+    assert len(supervisor_client.mock_calls) == 17
     assert get_core_info(hass)["version_latest"] == "1.0.0"
     assert is_hassio(hass)
 
@@ -189,6 +189,56 @@ async def test_setup_api_ping_fails(
     assert is_hassio(hass)
     entry = hass.config_entries.async_entries("hassio")[0]
     assert entry.state is ConfigEntryState.SETUP_RETRY
+
+
+async def test_setup_supervisor_update_available_auto_update(
+    hass: HomeAssistant,
+    supervisor_client: AsyncMock,
+    supervisor_info: AsyncMock,
+) -> None:
+    """Test that an outdated Supervisor with auto_update triggers update and retries."""
+    supervisor_client.supervisor.info.return_value = replace(
+        supervisor_info.return_value,
+        version="1.0.0",
+        version_latest="1.1.0",
+        update_available=True,
+        auto_update=True,
+    )
+
+    with patch.dict(os.environ, MOCK_ENVIRON):
+        result = await async_setup_component(hass, "hassio", {})
+        await hass.async_block_till_done()
+
+    assert result
+    assert is_hassio(hass)
+    entry = hass.config_entries.async_entries("hassio")[0]
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+    supervisor_client.supervisor.update.assert_called_once()
+
+
+async def test_setup_supervisor_update_available_auto_update_disabled(
+    hass: HomeAssistant,
+    supervisor_client: AsyncMock,
+    supervisor_info: AsyncMock,
+) -> None:
+    """Test that an outdated Supervisor with auto_update disabled proceeds normally."""
+    supervisor_client.supervisor.info.return_value = replace(
+        supervisor_info.return_value,
+        version="1.0.0",
+        version_latest="1.1.0",
+        update_available=True,
+        auto_update=False,
+    )
+
+    with patch.dict(os.environ, MOCK_ENVIRON):
+        result = await async_setup_component(hass, "hassio", {})
+        await hass.async_block_till_done()
+
+    assert result
+    assert is_hassio(hass)
+    entry = hass.config_entries.async_entries("hassio")[0]
+    assert entry.state is ConfigEntryState.LOADED
+    supervisor_client.supervisor.update.assert_not_called()
 
 
 async def test_setup_app_panel(hass: HomeAssistant) -> None:
@@ -224,7 +274,7 @@ async def test_setup_api_push_api_data(
         await hass.async_block_till_done()
 
     assert result
-    assert len(supervisor_client.mock_calls) == 16
+    assert len(supervisor_client.mock_calls) == 17
     supervisor_client.homeassistant.set_options.assert_called_once_with(
         HomeAssistantOptions(ssl=False, port=9999, refresh_token=ANY)
     )
@@ -240,7 +290,7 @@ async def test_setup_api_push_api_data_error(
         await hass.async_block_till_done()
 
     assert result
-    assert len(supervisor_client.mock_calls) == 16
+    assert len(supervisor_client.mock_calls) == 17
     assert "Failed to update Home Assistant options in Supervisor: boom" in caplog.text
 
 
@@ -257,7 +307,7 @@ async def test_setup_api_push_api_data_server_host(
         await hass.async_block_till_done()
 
     assert result
-    assert len(supervisor_client.mock_calls) == 16
+    assert len(supervisor_client.mock_calls) == 17
     supervisor_client.homeassistant.set_options.assert_called_once_with(
         HomeAssistantOptions(ssl=False, port=9999, refresh_token=ANY, watchdog=False)
     )
@@ -275,7 +325,7 @@ async def test_setup_api_push_api_data_default(
         await hass.async_block_till_done()
 
     assert result
-    assert len(supervisor_client.mock_calls) == 16
+    assert len(supervisor_client.mock_calls) == 17
     supervisor_client.homeassistant.set_options.assert_called_once_with(
         HomeAssistantOptions(ssl=False, port=8123, refresh_token=ANY)
     )
@@ -352,7 +402,7 @@ async def test_setup_api_existing_hassio_user(
         await hass.async_block_till_done()
 
     assert result
-    assert len(supervisor_client.mock_calls) == 16
+    assert len(supervisor_client.mock_calls) == 17
     supervisor_client.homeassistant.set_options.assert_called_once_with(
         HomeAssistantOptions(ssl=False, port=8123, refresh_token=token.token)
     )
@@ -369,7 +419,7 @@ async def test_setup_core_push_config(
         await hass.async_block_till_done()
 
     assert result
-    assert len(supervisor_client.mock_calls) == 16
+    assert len(supervisor_client.mock_calls) == 17
     supervisor_client.supervisor.set_options.assert_called_once_with(
         SupervisorOptions(timezone="testzone")
     )
@@ -394,7 +444,7 @@ async def test_setup_core_push_config_error(
         await hass.async_block_till_done()
 
     assert result
-    assert len(supervisor_client.mock_calls) == 16
+    assert len(supervisor_client.mock_calls) == 17
     assert "Failed to update Supervisor options: boom" in caplog.text
 
 
@@ -410,7 +460,7 @@ async def test_setup_hassio_no_additional_data(
         await hass.async_block_till_done()
 
     assert result
-    assert len(supervisor_client.mock_calls) == 16
+    assert len(supervisor_client.mock_calls) == 17
 
 
 async def test_fail_setup_without_environ_var(hass: HomeAssistant) -> None:
@@ -1143,7 +1193,7 @@ async def test_setup_hardware_integration(
         await hass.async_block_till_done(wait_background_tasks=True)
 
     assert result
-    assert len(supervisor_client.mock_calls) == 16
+    assert len(supervisor_client.mock_calls) == 17
     assert len(mock_setup_entry.mock_calls) == 1
 
 

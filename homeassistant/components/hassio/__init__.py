@@ -301,6 +301,36 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             translation_key="supervisor_not_connected",
         ) from err
 
+    try:
+        supervisor_info = await supervisor_client.supervisor.info()
+    except SupervisorError as err:
+        raise ConfigEntryNotReady(
+            translation_domain=DOMAIN,
+            translation_key="supervisor_not_connected",
+        ) from err
+
+    if supervisor_info.update_available:
+        if supervisor_info.auto_update:
+            _LOGGER.warning(
+                "Supervisor update available (%s -> %s), triggering update",
+                supervisor_info.version,
+                supervisor_info.version_latest,
+            )
+            try:
+                await supervisor_client.supervisor.update()
+            except SupervisorError as err:
+                _LOGGER.warning("Failed to trigger Supervisor update: %s", err)
+            raise ConfigEntryNotReady(
+                translation_domain=DOMAIN,
+                translation_key="supervisor_update_pending",
+            )
+        _LOGGER.debug(
+            "Supervisor update available (%s -> %s) but auto_update is disabled,"
+            " proceeding with current version",
+            supervisor_info.version,
+            supervisor_info.version_latest,
+        )
+
     # Get or create a refresh token for the Supervisor user
     user = hass.data[DATA_HASSIO_SUPERVISOR_USER]
     if user.refresh_tokens:
