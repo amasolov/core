@@ -78,6 +78,18 @@ def mock_all(
         version_latest="1.0.1dev222",
         update_available=True,
     )
+    # The early check in async_setup_entry reads supervisor info before the
+    # coordinator does. Return update_available=False on the first call so
+    # setup is not blocked, then let subsequent calls use return_value which
+    # has update_available=True so update entities reflect reality.
+    _update_available_return = supervisor_info.return_value
+    _up_to_date_return = replace(_update_available_return, update_available=False)
+
+    def _supervisor_info_side_effect():
+        supervisor_info.side_effect = None
+        return _up_to_date_return
+
+    supervisor_info.side_effect = _supervisor_info_side_effect
 
     def mock_addon_info(slug: str):
         addon = Mock(

@@ -55,6 +55,13 @@ def mock_all(
         version_latest="1.0.1dev222",
         update_available=True,
     )
+    _up_to_date_return = replace(supervisor_info.return_value, update_available=False)
+
+    def _supervisor_info_side_effect():
+        supervisor_info.side_effect = None
+        return _up_to_date_return
+
+    supervisor_info.side_effect = _supervisor_info_side_effect
 
     def mock_addon_info(slug: str):
         addon = Mock(

@@ -2063,6 +2063,7 @@ async def hassio_stubs(
     hass_client: ClientSessionGenerator,
     aioclient_mock: AiohttpClientMocker,
     supervisor_client: AsyncMock,
+    supervisor_info: AsyncMock,
     ingress_panels: AsyncMock,
 ) -> None:
     """Create mock hassio http client."""
